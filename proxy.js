@@ -104,69 +104,114 @@ function startServer() {
 			};
 			
 			var params = getUrlParams(url.split("?")[1]);
-			var url = params.req;
+			var url = decodeURIComponent(params.req);
 			redirectTo(response, url);
 		}
 	}).listen(9615);
 	
 	http.createServer(function(request, response) {
-	var ip = request.connection.remoteAddress;
-	
-	/*
-	if (!host_allowed(request.url)) {
-		console.log("ACCESS DENYED!");
-		msg = "Host " + request.url + " has been denied by proxy configuration";
-		deny(response, msg);
-		util.puts(msg);
-		return;
-	}
-	*/
-	
-	util.puts(ip + ": " + request.method + " " + request.url);
-	
-	var url = request.url;
-	/*
-	console.log("URL: ", url);
-	if (url.indexOf('getaccess') !== -1) {
-		console.log("IP added to whitelist: " + ip);
-		ip_list.push(ip);
-		var index = url.indexOf('req=');
-		var newUrl = url.substr(index, url.length-index);
-		request.url = newUrl;
-	}
-	*/
-	
-	if (!client_allowed(ip)) {
-		showLandingPage(response, request.url);    
-	} else {
-	
-	var proxy = http.createClient(80, request.headers['host']);
-	var proxy_request = proxy.request(request.method, request.url, request.headers);
-	
-	  proxy_request.addListener('response', function(proxy_response) {
-	    proxy_response.addListener('data', function(chunk) {
-	      response.write(chunk, 'binary');
-	    });
-	    proxy_response.addListener('end', function() {
-	      response.end();
-	    });
-	    response.writeHead(proxy_response.statusCode, proxy_response.headers);
-	  });
-	  
-	  request.addListener('data', function(chunk) {
-	    proxy_request.write(chunk, 'binary');
-	  });
-	  
-	  request.addListener('end', function() {
-	    proxy_request.end();
-	  });
-	  
-	  request.addListener('error', function(err) {
-	    util.puts('error: ' + err);
-	    proxy_request.end();
-	  });
-	  
-	  }
+		var ip = request.connection.remoteAddress;
+		
+		/*
+		if (!host_allowed(request.url)) {
+			console.log("ACCESS DENYED!");
+			msg = "Host " + request.url + " has been denied by proxy configuration";
+			deny(response, msg);
+			util.puts(msg);
+			return;
+		}
+		*/
+		
+		//util.puts(ip + ": " + request.method + " " + request.url);
+		console.log(ip + ": " + request.method + " " + function(url) { return url; }(request.url));
+		
+		var url = request.url;
+		/*
+		console.log("URL: ", url);
+		if (url.indexOf('getaccess') !== -1) {
+			console.log("IP added to whitelist: " + ip);
+			ip_list.push(ip);
+			var index = url.indexOf('req=');
+			var newUrl = url.substr(index, url.length-index);
+			request.url = newUrl;
+		}
+		*/
+		
+		if (!client_allowed(ip)) {
+			showLandingPage(response, url);
+		} else {
+			/*
+			var options = {
+				host: 'freifunk.net', //request.headers['host'],
+				port: 80,
+				path: '/', //request.headers['path'],
+				method: request.method
+			};
+			
+			console.log('REDIRECTING ', options);
+			
+			var req = http.request(options, function(proxy_response) {
+				console.log('STATUS: ' + proxy_response.statusCode);
+				console.log('HEADERS: ' + JSON.stringify(proxy_response.headers));
+				
+				proxy_response.setEncoding('utf8');
+				
+				proxy_response.on('data', function (chunk) {
+					try {
+						response.write(chunk, 'binary');
+					} catch (err) {
+						console.log("ERROR response.write: ", err);
+					}
+				});
+				
+				proxy_response.on('end', function (chunk) {
+					response.end();
+				});
+			});
+			*/
+			
+			var proxy = http.createClient(80, request.headers['host']);
+			var proxy_request = proxy.request(request.method, url, request.headers);
+			
+			proxy_request.addListener('response', function(proxy_response) {
+			
+				proxy_response.addListener('data', function(chunk) {
+					try {
+					response.write(chunk, 'binary');
+					} catch (err) {
+						console.log("ERROR response.write: ", err);
+					}
+				});
+				
+				proxy_response.addListener('end', function() {
+					response.end();
+				});
+				
+				try {
+				response.writeHead(proxy_response.statusCode, proxy_response.headers);
+				} catch (err) {
+					console.log("ERROR response.writeHead: ", err);
+				}
+			});
+			
+			request.addListener('data', function(chunk) {
+				try {
+				proxy_request.write(chunk, 'binary');
+				} catch (err) {
+					console.log("ERROR proxy_request.write: ", err);
+				}
+			});
+			
+			request.addListener('end', function() {
+				proxy_request.end();
+			});
+			
+			request.addListener('error', function(err) {
+				console.log('ERROR: ' + err);
+				proxy_request.end();
+			});
+			
+		}
 	  
 	}).listen(8003);
 }
