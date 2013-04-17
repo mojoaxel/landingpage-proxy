@@ -59,11 +59,11 @@ function showLandingPage(response, url) {
 	response.write('<p><a href="192.168.10.40/getaccess?req='+url+'">Weiter zu '+url+'</a></p>');
 	response.end();
 	*/
-	response.writeHead(307, {
-		'Location': 'http://localhost:8080' + 
+	response.writeHead(511, //511 Network Authentication Required 
+	{	'Location': 'http://localhost:8080' + 
 					'#?req=' + url + 
 					'&access=http://localhost:9615/getaccess'
-	}); //307 Temporary Redirect
+	});
 	response.end();
 }
 
