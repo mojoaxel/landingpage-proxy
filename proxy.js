@@ -51,32 +51,62 @@ function deny(response, msg) {
   response.end();
 }
 
-function showLandingPage(response, url) {
-	/*
-	response.writeHead(402); //402 payment required
-	response.write('<html>');
-	response.write("<h1>Welcome to Freifunk!</h1>");
-	response.write('<p><a href="192.168.10.40/getaccess?req='+url+'">Weiter zu '+url+'</a></p>');
-	response.end();
-	*/
-	response.writeHead(511, //511 Network Authentication Required 
-	{	'Location': 'http://localhost:8080' + 
-					'#?req=' + url + 
-					'&access=http://localhost:9615/getaccess'
+function redirectTo(response, url) {
+	//307 Temporary Redirect 
+	response.writeHead(307, {
+		'Location': url
 	});
 	response.end();
 }
 
+function showLandingPage(response, url) {
+	redirectTo(response, 
+		'http://localhost:8080' + 
+		'#?req=' + url + 
+		'&access=http://localhost:9615/getaccess');
+}
+
 function startServer() {
 	// wait for clients to ask for access
-	http.createServer(function (req, res) {
-		var ip = req.connection.remoteAddress;
-		console.log("IP added to whitelist: " + ip);
-		ip_list.push(ip);
+	http.createServer(function (request, response) {
+		var url = request.url;
+		console.log('Request for ' + request.url);
+		
+		if (url.indexOf('getaccess') !== -1) {
+		
+			console.log('GETACCESS ' + url);
 			
-		res.writeHead(200, {'Content-Type': 'text/plain'});
-		res.write("Access granted...have fun...");
-		res.end();
+			var ip = request.connection.remoteAddress;
+			console.log("IP added to whitelist: " + ip);
+			ip_list.push(ip);
+				
+			function getUrlParams(url) {
+				// This function is anonymous, is executed immediately and 
+				// the return value is assigned to QueryString!
+				var query_string = {};
+				var query = url;
+				var vars = query.split("&");
+				for (var i=0;i<vars.length;i++) {
+					var pair = vars[i].split("=");
+						// If first entry with this name
+					if (typeof query_string[pair[0]] === "undefined") {
+						query_string[pair[0]] = pair[1];
+						// If second entry with this name
+					} else if (typeof query_string[pair[0]] === "string") {
+						var arr = [ query_string[pair[0]], pair[1] ];
+						query_string[pair[0]] = arr;
+						// If third or later entry with this name
+					} else {
+						query_string[pair[0]].push(pair[1]);
+					}
+				} 
+				return query_string;
+			};
+			
+			var params = getUrlParams(url.split("?")[1]);
+			var url = params.req;
+			redirectTo(response, url);
+		}
 	}).listen(9615);
 	
 	http.createServer(function(request, response) {
@@ -141,6 +171,8 @@ function startServer() {
 	}).listen(8003);
 }
 
+console.log("Loading Blacklist...");
 update_blacklist();
 
+console.log("Starting Server...");
 startServer();
