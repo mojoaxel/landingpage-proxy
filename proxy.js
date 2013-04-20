@@ -10,8 +10,12 @@ var http = require('http');
 var util  = require('util');
 var fs   = require('fs');
 
-var blacklist = [];
+//============================================================
+var server_ip = '192.168.10.40';
+//============================================================
 
+
+var blacklist = [];
 var ip_list = [];
 
 fs.watchFile('./blacklist', function(c,p) { update_blacklist(); });
@@ -61,9 +65,9 @@ function redirectTo(response, url) {
 
 function showLandingPage(response, url) {
 	redirectTo(response, 
-		'http://localhost:8080' + 
+		'http://' + server_ip + ':8080' + 
 		'#?req=' + url + 
-		'&access=http://localhost:9615/getaccess');
+		'&access=http://' + server_ip + ':9615/getaccess');
 }
 
 function startServer() {
